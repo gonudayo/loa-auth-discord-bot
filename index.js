@@ -9,6 +9,10 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  EmbedBuilder,
+  MessageFlags,
 } = require("discord.js");
 
 // use dotenv
@@ -19,18 +23,38 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-client.on(Events.MessageCreate, (message) => {
-  if (message.author.bot) return;
+client.on(Events.MessageCreate, async (interaction) => {
+  if (interaction.author.bot) return;
 
   let button = new ActionRowBuilder();
+
   button.addComponents(
     new ButtonBuilder()
       .setCustomId("verification-button")
       .setStyle(ButtonStyle.Primary)
-      .setLabel("인증 시작하기")
+      .setLabel("프로필 주소 제출하기")
   );
-  message.reply({
+
+  const exampleEmbed = new EmbedBuilder()
+    .setColor(0x0099ff)
+    .setTitle("로스트아크 캐릭터 인증 방법")
+    .setDescription("아래 방법을 따라해 주세요.")
+    .addFields(
+      { name: "Regular field title", value: "Some value here" },
+      { name: "\u200B", value: "\u200B" },
+      { name: "Inline field title", value: "Some value here", inline: true },
+      { name: "Inline field title", value: "Some value here", inline: true }
+    )
+    .addFields({
+      name: "Inline field title",
+      value: "Some value here",
+      inline: true,
+    })
+    .setImage("https://i.imgur.com/AfFp7pu.png");
+
+  await interaction.reply({
     components: [button],
+    embeds: [exampleEmbed],
   });
 });
 
@@ -39,17 +63,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.customId === "verification-button") {
       // 첫 번째 모달 표시
       const modal = new ModalBuilder()
-        .setCustomId("nickname-modal")
-        .setTitle("닉네임 입력하기")
+        .setCustomId("profile-modal")
+        .setTitle("스토브 라운지 프로필 인증")
         .addComponents([
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
-              .setCustomId("nickname-input")
-              .setLabel("닉네임")
+              .setCustomId("profile-input")
+              .setLabel("프로필 주소")
               .setStyle(TextInputStyle.Short)
-              .setMinLength(2)
-              .setMaxLength(20)
-              .setPlaceholder("이곳에 닉네임을 입력해 주세요.")
+              .setPlaceholder("이곳에 프로필 주소를 입력해 주세요.")
               .setRequired(true)
           ),
         ]);
@@ -59,62 +81,49 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.type === InteractionType.ModalSubmit) {
-    if (interaction.customId === "nickname-modal") {
-      const response = interaction.fields.getTextInputValue("nickname-input");
-
-      // 모달 제출 응답
-      await interaction.reply({
-        content: `제출한 닉네임: "${response}"`,
-        ephemeral: true, // 사용자에게만 보이도록 설정
-      });
+    if (interaction.customId === "profile-modal") {
+      const response = interaction.fields.getTextInputValue("profile-input");
 
       console.log(response);
 
-      // 두 번째 버튼 제공
-      let secondButton = new ActionRowBuilder();
-      secondButton.addComponents(
-        new ButtonBuilder()
-          .setCustomId("profile-selection-button")
-          .setStyle(ButtonStyle.Primary)
-          .setLabel("인증하기")
-      );
+      const select = new StringSelectMenuBuilder()
+        .setCustomId("starter")
+        .setPlaceholder("Make a selection!")
+        .addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel("Bulbasaur")
+            .setDescription("The dual-type Grass/Poison Seed Pokémon.")
+            .setValue("bulbasaur"),
+          new StringSelectMenuOptionBuilder()
+            .setLabel("Charmander")
+            .setDescription("The Fire-type Lizard Pokémon.")
+            .setValue("charmander"),
+          new StringSelectMenuOptionBuilder()
+            .setLabel("Squirtle")
+            .setDescription("The Water-type Tiny Turtle Pokémon.")
+            .setValue("squirtle")
+        );
 
-      // 버튼을 사용자에게 응답으로 제공
-      await interaction.followUp({
-        components: [secondButton],
-        ephemeral: true,
-      });
-    } else if (interaction.customId === "profile-modal") {
-      const profileResponse =
-        interaction.fields.getTextInputValue("profile-input");
+      const row = new ActionRowBuilder().addComponents(select);
+
       await interaction.reply({
-        content: `제출되었습니다.`,
+        components: [row],
         ephemeral: true,
       });
-      console.log(profileResponse);
     }
   }
 
-  if (interaction.isButton()) {
-    if (interaction.customId === "profile-selection-button") {
-      // 두 번째 모달 표시
-      const secondModal = new ModalBuilder()
-        .setCustomId("profile-modal")
-        .setTitle("스토브 라운지 프로필 인증하기")
-        .addComponents([
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId("profile-input")
-              .setLabel("프로필 주소")
-              .setStyle(TextInputStyle.Short)
-              .setMinLength(3)
-              .setMaxLength(20)
-              .setPlaceholder("이곳에 프로필 주소를 입력해 주세요.")
-              .setRequired(true)
-          ),
-        ]);
+  if (interaction.isSelectMenu()) {
+    if (interaction.customId === "starter") {
+      const selected = interaction.values[0];
 
-      await interaction.showModal(secondModal);
+      console.log(`선택한 항목: ${selected}`);
+
+      await interaction.update({
+        content: `선택한 항목: ${selected}`,
+        components: [],
+        ephemeral: true,
+      });
     }
   }
 });
