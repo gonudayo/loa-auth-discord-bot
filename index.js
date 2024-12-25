@@ -20,9 +20,18 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers,
+  ],
 });
 
+client.on(Events.GuildMemberAdd, async (member) => {
+  await member.user.send("입장감지DM");
+});
+
+// 메세지 감지
 client.on(Events.MessageCreate, async (interaction) => {
   if (interaction.author.bot) return;
 
@@ -52,7 +61,8 @@ client.on(Events.MessageCreate, async (interaction) => {
     })
     .setImage("https://i.imgur.com/AfFp7pu.png");
 
-  await interaction.reply({
+  await interaction.author.send({
+    content: `welcome to the server, ${interaction.author.username}!`,
     components: [button],
     embeds: [exampleEmbed],
   });
